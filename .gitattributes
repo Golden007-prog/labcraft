@@ -1,3 +1,11 @@
+# LF everywhere, whatever core.autocrlf says on the machine that checks out (as craft-anything).
+# The rules below say what depends on it, and the exceptions that must stay byte for byte; they
+# come after this line, so they win.
+* text=auto eol=lf
+
+# Images are binary
+*.png binary
+
 # LabCraft sources use LF line endings (spec v0, section 2)
 *.lcf text eol=lf
 *.lct text eol=lf
@@ -16,11 +24,11 @@ skills/** text eol=lf
 *.sh text eol=lf
 
 # Hostile files are stored byte for byte (CR LF, BOM, invalid UTF-8)
-tests/acceptance/hostile/** -text
+tests/acceptance/hostile/** -text -eol
 
 # FigCraft files are zip archives
 *.figcraft binary
 
 # Fonts, and the data of Unicode byte for byte (its SHA-256 is in ATTRIBUTION.md and the generated tables)
 *.ttf binary
-crates/types/tests/data/** -text
+crates/types/tests/data/** -text -eol
