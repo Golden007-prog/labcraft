@@ -850,7 +850,7 @@ impl Sizer<'_> {
         }
         let middle = height / 2;
         // One input at the middle, two on the first and last places, three on the first, the middle and the last; more
-        // from the top, one per place (an error of `check` that is still drawn, or a variadic `add`).
+        // from the top, one per place, even when `check` rejects the call for having too many inputs.
         let ys: Vec<i64> = match count {
             0 => Vec::new(),
             1 => vec![middle],
