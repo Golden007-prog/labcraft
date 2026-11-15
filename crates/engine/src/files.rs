@@ -94,12 +94,7 @@ pub(crate) fn text_of(bytes: Cow<'static, [u8]>, parameter: &str, shown: &str) -
 
 /// The path of a file in the project, judged; a shipped file only to read.
 fn project_file(session: &Session, params: &Params, parameter: &str, wanted: Wanted) -> Result<(PathBuf, String, bool), CommandError> {
-    match paths::judge(&*session.ws, &session.root, params.text(parameter)?, parameter, wanted, false)? {
-        Place::Project { path, shown, exists } => Ok((path, shown, exists)),
-        Place::Shipped(shown) => {
-            Err(CommandError::of("path.outside_project", parameter, format!("`{shown}` is shipped with LabCraft, and never written")))
-        }
-    }
+    paths::in_project(&*session.ws, &session.root, params.text(parameter)?, parameter, wanted)
 }
 
 /// `file.read`.
@@ -228,15 +223,12 @@ pub fn write(session: &mut Session, params: &Params) -> Result<Value, CommandErr
 
 /// An existing file of the project that a command may change: a simulation file only if it reads as one.
 fn existing_file(session: &Session, params: &Params, parameter: &str) -> Result<(PathBuf, String), CommandError> {
-    let (path, shown, exists) = project_file(session, params, parameter, Wanted::File)?;
-    if !exists {
-        return Err(CommandError::of("path.not_found", parameter, format!("`{shown}` does not exist")));
-    }
+    let (path, shown) = paths::existing_in_project(&*session.ws, &session.root, params.text(parameter)?, parameter, Wanted::File)?;
     if session.ws.metadata(&path).map(|metadata| metadata.kind).ok() != Some(Kind::File) {
         return Err(CommandError::of("path.invalid", parameter, format!("`{shown}` is not a regular file")));
     }
     if is_simulation(&path) {
-        let (bytes, _) = bytes_of(session, &Place::Project { path: path.clone(), shown: shown.clone(), exists }, parameter)?;
+        let (bytes, _) = bytes_of(session, &Place::Project { path: path.clone(), shown: shown.clone(), exists: true }, parameter)?;
         if let Err(why) = reads_as_simulation(session, &String::from_utf8_lossy(&bytes)) {
             return Err(not_simulation(parameter, &shown, "does not read as a simulation file", &why));
         }
@@ -286,10 +278,7 @@ pub fn delete(session: &mut Session, params: &Params) -> Result<Value, CommandEr
 
 /// `file.format`.
 pub fn format(session: &mut Session, params: &Params) -> Result<Value, CommandError> {
-    let (path, shown, exists) = project_file(session, params, "path", Wanted::FileOrFolder)?;
-    if !exists {
-        return Err(CommandError::of("path.not_found", "path", format!("`{shown}` does not exist")));
-    }
+    let (path, _) = paths::existing_in_project(&*session.ws, &session.root, params.text("path")?, "path", Wanted::FileOrFolder)?;
     let Formatted { mut report, files, changed } =
         format_paths(&*session.ws, &[path], Some(&session.root), &session.config.limits, params.bool("check_only"));
     session.forget();
@@ -301,18 +290,6 @@ pub fn format(session: &mut Session, params: &Params) -> Result<Value, CommandEr
 /// `library.check`.
 pub fn library_check(session: &mut Session, params: &Params) -> Result<Value, CommandError> {
     let folder = params.str("folder").unwrap_or(".");
-    let (path, shown, exists) = match paths::judge(&*session.ws, &session.root, folder, "folder", Wanted::Folder, false)? {
-        Place::Project { path, shown, exists } => (path, shown, exists),
-        Place::Shipped(shown) => {
-            return Err(CommandError::of(
-                "path.outside_project",
-                "folder",
-                format!("`{shown}` is shipped with LabCraft: check a folder of the project"),
-            ));
-        }
-    };
-    if !exists {
-        return Err(CommandError::of("path.not_found", "folder", format!("`{shown}` does not exist")));
-    }
+    let (path, _) = paths::existing_in_project(&*session.ws, &session.root, folder, "folder", Wanted::Folder)?;
     session.check_document(&path, params.bool("deny_warnings"))
 }
