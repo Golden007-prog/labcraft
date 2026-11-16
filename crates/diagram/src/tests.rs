@@ -679,7 +679,7 @@ fn an_icon_number_has_no_exponent() {
     assert_eq!(crate::size::icon_number("0.006", false), 1);
 }
 
-/// A D draws extra inputs from the top, one per place, even when `check` rejects the call for having too many.
+/// Above three inputs, a D draws every input from the top, one per place, including extra inputs that `check` refuses.
 /// The D grows by two places at a time, with its output at the middle, on the grid.
 #[test]
 fn a_d_holds_all_its_inputs() {
